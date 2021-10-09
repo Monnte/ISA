@@ -9,6 +9,7 @@
 #include <iostream>
 #include <map>
 #include <net/ethernet.h>
+#include <netinet/ip6.h>
 #include <netinet/ip_icmp.h>
 #include <pcap.h>
 #include <pcap/pcap.h>
@@ -17,11 +18,14 @@
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <netinet/icmp6.h>
+#include <vector>
 
 using namespace std;
 
 struct fileinfo {
     ofstream *file_ptr;
+    vector<char> data;
     int seq;
 };
 
@@ -36,7 +40,9 @@ class icmp_server {
     int new_file(char *filename, int ID);
     int file_write(int ID, char *data, int datalen, int seq);
     int file_transferd(char *filename, int ID);
-    int file_corrupted(int ID);
+    int transfer_error(int ID);
+    void handle_data(char *pkt_data,int caplen,int ip_version);
+
     void exit_server();
 
   private:

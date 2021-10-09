@@ -1,21 +1,6 @@
-/**
- * @file_name main.cpp
- * @author Peter zdravecký (xzdrav00@stud.fit.vutbr.cz)
- * @brief Network packet capturing with filter options
- * @version 0.1
- * @date 2021-09-28
- *
- * @copyright Copyright (c) 2021
- *
- */
 #include "main.h"
 
 int main(int argc, char **argv) {
-
-    if (getuid() != 0) {
-        fprintf(stderr, "%s: This program requires root privileges!\n", argv[0]);
-        return 1;
-    }
 
     signal(SIGINT, handle_exit);
     /***---------------------------------------------------------------***/
@@ -29,7 +14,7 @@ int main(int argc, char **argv) {
 
     /* Parse options and arguments */
     int c;
-    while ((c = getopt(argc, argv, "r:s:l::")) != -1) {
+    while ((c = getopt(argc, argv, "r:s:lh")) != -1) {
         switch (c) {
         case 'r':
             file_name = optarg;
@@ -40,24 +25,36 @@ int main(int argc, char **argv) {
         case 'l':
             isServer = 1;
             break;
+        case 'h':
+            print_help();
+            return 0;
         case '?':
+            print_help();
             return 1;
+
         default:
+            print_help();
             return 1;
         }
     }
 
     if (!isServer) {
-
         if (!file_name) {
             fprintf(stderr, "option -r is required\n");
+            print_help();
             return 1;
         }
 
         if (!dst_adress) {
             fprintf(stderr, "option -s is required\n");
+            print_help();
             return 1;
         }
+    }
+
+    if (getuid() != 0) {
+        fprintf(stderr, "%s: this program requires root privileges!\n", argv[0]);
+        return 1;
     }
 
     if (isServer) {
@@ -66,7 +63,6 @@ int main(int argc, char **argv) {
 
         result = server.start();
     } else {
-
         result = client.send_file(file_name, dst_adress);
     }
 
@@ -77,9 +73,9 @@ int server_transfer() { return 0; }
 
 void handle_exit(int s) {
     if (s == 2) {
-        if (isServer) {
+        if (isServer)
             server.exit_server();
-        }
+
         exit(1);
     }
 }
@@ -87,6 +83,17 @@ void handle_exit(int s) {
 void print_help() {
     printf("------------------------\n");
     printf("Secret ICMP file_name Transfer\n");
+    printf("Usage:");
+    printf(" ./secret -r [file] -s [ip|hostname] {-l}\n\n");
+    printf("    [] - requried options\n");
+    printf("    {} - optional options\n\n");
+
+    printf("    -r [file]                  - The name of the file to send\n");
+    printf("    -s [ip|hostname]           - Ip address / hostname to which the file should be sent\n");
+    printf("    -l                         - Start server and listen for ICMP packet and save files to current folder\n");
+    printf("    -h                         - Print help message\n");
+    printf("\nNOTE: -l option can be used without -r and -s options.\n");
+    printf("\nNOTE: this program requires root privileges to work correctly\n");
     printf("\nAuthor: Peter Zdravecký\n");
     printf("------------------------\n");
 }

@@ -25,13 +25,13 @@ int icmp_server::init() {
         return 1;
     }
 
-    this->device = pcap_open_live(interface, BUFSIZ, 1, 1000, error_message);
+    this->device = pcap_open_live(interface, BUFSIZ, 0, 1, error_message);
     if (this->device == NULL) {
         fprintf(stderr, "Error: %s\n", error_message);
         return 1;
     }
 
-    int compile = pcap_compile(this->device, &(fp), (char *)"icmp", 0, netp);
+    int compile = pcap_compile(this->device, &(fp), (char *)"icmp or icmp6", 0, netp);
     if (compile == -1) {
         fprintf(stderr, "Error: %s\n", pcap_geterr(this->device));
         return 1;
@@ -56,7 +56,7 @@ int icmp_server::init() {
 }
 
 int icmp_server::start() {
-
+    printf("Sever is listening!\n-----------------------------\n");
     if (pcap_loop(this->device, -1, handle_packet, (u_char *)this) < 0) {
         fprintf(stderr, "Error: error occures while capturing packets\n");
         return 1;
@@ -66,25 +66,48 @@ int icmp_server::start() {
     return 0;
 }
 
+
 void handle_packet(u_char *user, const struct pcap_pkthdr *pkt_header, const u_char *pkt_data) {
     auto server = (icmp_server *)user;
 
-    int ipv4_len = sizeof(struct ip);
+    struct ether_header *eth_header = (struct ether_header *)pkt_data;
+    int ip_version;
+    switch (ntohs(eth_header->ether_type)) {
+    case ETHERTYPE_IP:
+        ip_version = 4;
+        break;
+    case ETHERTYPE_IPV6:
+        ip_version = 6;
+        break;
+    default:
+        return;
+        break;
+    }
+
+    server->handle_data((char *)pkt_data, pkt_header->caplen, ip_version);
+}
+
+void icmp_server::handle_data(char *pkt_data, int caplen, int ip_version) {
+    int ip_len = ip_version == 4 ? sizeof(struct ip) : sizeof(struct ip6_hdr);
     int icmp_len = sizeof(struct icmp);
     int proto_len = sizeof(struct secret_proto);
 
-    int headers_length = ETH_HLEN + ipv4_len + icmp_len + proto_len;
-    int datalen = pkt_header->caplen - (ETH_HLEN + ipv4_len + icmp_len + proto_len);
+    int headers_length = ETH_HLEN + ip_len + icmp_len + proto_len;
+    int datalen = caplen - (ETH_HLEN + ip_len + icmp_len + proto_len);
 
-    if ((int)pkt_header->caplen < headers_length)
+    if (caplen < headers_length)
         return;
 
-    struct ip *ip = (struct ip *)pkt_data + ETH_HLEN;
-    struct icmp *icmp = (struct icmp *)(pkt_data + ETH_HLEN + ipv4_len);
-    struct secret_proto *proto = (struct secret_proto *)(pkt_data + ETH_HLEN + ipv4_len + icmp_len);
+    struct icmp *icmp = (struct icmp *)(pkt_data + ETH_HLEN + ip_len);
+    struct secret_proto *proto = (struct secret_proto *)(pkt_data + ETH_HLEN + ip_len + icmp_len);
 
-    if (strcmp(proto->proto_name, "MNT"))
+    if (icmp->icmp_type != (ip_version == 4 ? ICMP_ECHO : ICMP6_ECHO_REQUEST)) {
         return;
+    }
+
+    if (strcmp(proto->proto_name, "MNT")) {
+        return;
+    }
 
     char *data = (char *)calloc(datalen, 1);
     memcpy(data, pkt_data + headers_length, datalen);
@@ -94,13 +117,13 @@ void handle_packet(u_char *user, const struct pcap_pkthdr *pkt_header, const u_c
 
     switch (proto->type) {
     case pkt_type::HEAD:
-        server->new_file(decrypted_data, proto->client_id);
+        this->new_file(decrypted_data, proto->client_id);
         break;
     case pkt_type::DATA:
-        server->file_write(proto->client_id, decrypted_data, proto->datalen, proto->seq);
+        this->file_write(proto->client_id, decrypted_data, proto->datalen, proto->seq);
         break;
     case pkt_type::END:
-        server->file_transferd(decrypted_data, proto->client_id);
+        this->file_transferd(decrypted_data, proto->client_id);
         break;
 
     default:
@@ -119,12 +142,14 @@ int icmp_server::new_file(char *filename, int ID) {
     if (!file)
         return 1;
 
+    if (!file->is_open()) {
+        printf("Failed to open file: %s , file transfer with ID: %d is cancled\n", filename, ID);
+        return 1;
+    }
+
     this->connections[ID] = fileinfo;
     this->connections[ID]->file_ptr = file;
     this->connections[ID]->seq = 1;
-
-    if (!file->is_open())
-        return 1;
 
     printf("Incoming file: %s | Transfer ID: %d\n", filename, ID);
     return 0;
@@ -136,19 +161,34 @@ int icmp_server::file_write(int ID, char *data, int datalen, int seq) {
 
     if (seq != this->connections[ID]->seq) {
         printf("File transfer with ID: %d was coruptted ending accepting packets from this transfer\n", ID);
-        this->file_corrupted(ID);
+        printf("My seq: %d | gotten seq: %d\n", seq, this->connections[ID]->seq);
+        this->transfer_error(ID);
         return 1;
     }
 
     this->connections[ID]->seq++;
-    this->connections[ID]->file_ptr->write(data, datalen);
-    this->connections[ID]->file_ptr->flush();
+
+    // to prevent packet loosing we need to reduce I/O calls so we accumulate data in memory
+    this->connections[ID]->data.insert(this->connections[ID]->data.end(), data, data + datalen);
+
+    int vec_data_len = this->connections[ID]->data.size();
+    if (vec_data_len > 5000000) // write acuumulated data over 5MB
+    {
+        this->connections[ID]->file_ptr->write(this->connections[ID]->data.data(), vec_data_len);
+        this->connections[ID]->data.clear();
+    }
+
     return 0;
 }
 
 int icmp_server::file_transferd(char *filename, int ID) {
     if (this->connections.find(ID) == this->connections.end())
         return 1;
+
+    // write last data
+    int vec_data_len = this->connections[ID]->data.size();
+    this->connections[ID]->file_ptr->write(this->connections[ID]->data.data(), vec_data_len);
+    this->connections[ID]->data.clear();
 
     this->connections[ID]->file_ptr->close();
 
@@ -161,14 +201,9 @@ int icmp_server::file_transferd(char *filename, int ID) {
     return 0;
 }
 
-int icmp_server::file_corrupted(int ID) {
+int icmp_server::transfer_error(int ID) {
     if (this->connections.find(ID) == this->connections.end())
         return 1;
-
-    this->connections[ID]->file_ptr->clear();
-    this->connections[ID]->file_ptr->write("corrupted file", 14);
-    this->connections[ID]->file_ptr->flush();
-    this->connections[ID]->file_ptr->close();
 
     delete this->connections[ID]->file_ptr;
     delete this->connections[ID];
@@ -177,12 +212,13 @@ int icmp_server::file_corrupted(int ID) {
 
     return 0;
 }
+
 void icmp_server::exit_server() {
 
     // clear corrupted and abadoned files
     for (auto const &x : this->connections) {
         printf("File transfer with ID: %d is closing\n", x.first);
-        this->connections[x.first]->file_ptr->clear();
+        this->connections[x.first]->data.clear();
         this->connections[x.first]->file_ptr->close();
 
         delete this->connections[x.first]->file_ptr;
