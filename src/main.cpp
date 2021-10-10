@@ -1,3 +1,12 @@
+/**
+ * @file main.cpp
+ * @author Peter Zdravecký (xzdrav00)
+ * @version 0.1
+ * @date 2021-10-10
+ *
+ * @copyright Copyright (c) 2021
+ *
+ */
 #include "main.h"
 
 int main(int argc, char **argv) {
@@ -38,6 +47,7 @@ int main(int argc, char **argv) {
         }
     }
 
+    /* Argument check */
     if (!isServer) {
         if (!file_name) {
             fprintf(stderr, "option -r is required\n");
@@ -52,6 +62,7 @@ int main(int argc, char **argv) {
         }
     }
 
+    /* Root check */
     if (getuid() != 0) {
         fprintf(stderr, "%s: this program requires root privileges!\n", argv[0]);
         return 1;
@@ -68,8 +79,6 @@ int main(int argc, char **argv) {
 
     return result;
 }
-
-int server_transfer() { return 0; }
 
 void handle_exit(int s) {
     if (s == 2) {

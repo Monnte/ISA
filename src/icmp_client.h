@@ -1,13 +1,19 @@
+/**
+ * @file icmp_client.h
+ * @author Peter Zdravecký (xzdrav00)
+ * @version 0.1
+ * @date 2021-10-10
+ *
+ * @copyright Copyright (c) 2021
+ *
+ */
 #pragma once
 
 #include "help_functions.h"
 #include <arpa/inet.h>
-#include <assert.h>
 #include <ctype.h>
 #include <fstream>
-#include <getopt.h>
 #include <iostream>
-#include <libgen.h>
 #include <net/ethernet.h>
 #include <netdb.h>
 #include <netinet/icmp6.h>
@@ -22,29 +28,86 @@
 #include <unistd.h>
 
 using namespace std;
-unsigned short csum(char *b, int len);
-
-
 
 class icmp_client {
   public:
+    /**
+     * @brief Construct a new icmp client object
+     *
+     */
     icmp_client();
+
+    /**
+     * @brief Destroy the icmp client object
+     *
+     */
     ~icmp_client();
+
+    /**
+     * @brief Resolve infromation of destination and create socket for communication
+     *
+     * @return sucess = 0 / fail = 1
+     */
+    int get_dest_info();
+
+    /**
+     * @brief Main function for this module. Sends file to destination
+     *
+     * @param file_name Name of file to be sended
+     * @param dst_host Ip adress or hostname of destination
+     * @return sucess = 0 / fail = 1
+     */
     int send_file(char *file_name, char *dst_host);
-    int dnslookup();
+
+    /**
+     * @brief Send packet
+     *
+     * @param data transporeted data
+     * @param datalen transported data length
+     * @param pck_type type of packet to be sended
+     * @return sucess = 0 / fail = 1
+     */
+    int send_pkt(char *data, int datalen, int pck_type);
+
+    /**
+     * @brief Create a packet and fill with infromation
+     *
+     * @param proto secret protocol data
+     * @param data transporeted data
+     * @param datalen transported data length
+     * @return pointer to packet data
+     */
     char *create_packet(struct secret_proto *proto, char *data, int datalen);
-    int prepare_file();
+
+    /**
+     * @brief Read data from file.
+     *
+     * @param len length to read
+     * @param datalen actuall readed length
+     * @return pointer to data
+     */
     char *get_file_data(int len, int *datalen);
 
-    int send_pkt(char *data, int datalen, int pck_type);
-    int get_dest_info();
-    int prepare_socket();
+    /**
+     * @brief Try to open file
+     *
+     * @return sucess = 0 / fail = 1
+     */
+    int prepare_file();
 
-   
+    /**
+     * @brief Checksum function for icmp heder
+     * @see ISA/examples/raw/icmp4.c
+     *
+     * @param data pointer to data
+     * @param len data length
+     * @return checksum
+     */
+    unsigned short csum(char *data, int len);
 
   private:
     char *file_name;
-    char *dst_host;
+    char *dst_host; /* ip adress / hostname of destination */
     ifstream file;
     int sock;
     int client_id;

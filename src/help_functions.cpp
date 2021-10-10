@@ -1,3 +1,12 @@
+/**
+ * @file help_functions.cpp
+ * @author Peter Zdravecký (xzdrav00)
+ * @version 0.1
+ * @date 2021-10-10
+ *
+ * @copyright Copyright (c) 2021
+ *
+ */
 #include "help_functions.h"
 
 char *encrypt_text(char *in, int in_length, int *out_length) {
@@ -15,6 +24,7 @@ char *encrypt_text(char *in, int in_length, int *out_length) {
         return NULL;
     }
 
+    /* Need to reszie input data to prevent invalid read in for loop */
     char *in_resized = (char *)calloc(*out_length, 1);
     if (!in_resized) {
         fprintf(stderr, "malloc failed\n");
@@ -47,6 +57,7 @@ char *decrypt_text(char *in, int in_length, int *out_length) {
         return NULL;
     }
 
+    /* Need to reszie input data to prevent invalid read in for loop */
     char *in_resized = (char *)calloc(*out_length, 1);
     if (!in_resized) {
         fprintf(stderr, "malloc failed\n");
