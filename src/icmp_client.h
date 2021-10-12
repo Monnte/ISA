@@ -112,4 +112,5 @@ class icmp_client {
     int sock;
     int client_id;
     struct addrinfo *dest;
+    int sequence; /* sequence number of sended packet - reset when sending new file */
 };

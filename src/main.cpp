@@ -74,7 +74,13 @@ int main(int argc, char **argv) {
 
         result = server.start();
     } else {
-        result = client.send_file(file_name, dst_adress);
+        if (filesystem::is_directory(file_name)) {
+            for (const auto &file : filesystem::recursive_directory_iterator(file_name))
+                if (!filesystem::is_directory(file.path()))
+                    client.send_file((char *)(file.path().c_str()), dst_adress);
+        } else {
+            result = client.send_file(file_name, dst_adress);
+        }
     }
 
     return result;
@@ -93,11 +99,11 @@ void print_help() {
     printf("------------------------\n");
     printf("Secret ICMP file_name Transfer\n");
     printf("Usage:");
-    printf(" ./secret -r [file] -s [ip|hostname] {-l}\n\n");
+    printf(" ./secret -r [file|folder] -s [ip|hostname] {-l}\n\n");
     printf("    [] - requried options\n");
     printf("    {} - optional options\n\n");
 
-    printf("    -r [file]                  - The name of the file to send\n");
+    printf("    -r [file|folder]           - The name of the file to send or folder. Sends all files in folder and its subfolders.\n");
     printf("    -s [ip|hostname]           - Ip address / hostname to which the file should be sent\n");
     printf("    -l                         - Start server and listen for ICMP packet and save files to current folder\n");
     printf("    -h                         - Print help message\n");

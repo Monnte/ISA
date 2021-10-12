@@ -57,6 +57,7 @@ int icmp_client::send_file(char *file_name, char *dst_host) {
     printf("File Name: %s | Adress: %s\n-----------------------------\n", file_name, dst_host);
     this->file_name = file_name;
     this->dst_host = dst_host;
+    this->sequence = 0;
 
     if (this->get_dest_info())
         return 1;
@@ -101,18 +102,17 @@ int icmp_client::send_file(char *file_name, char *dst_host) {
     close(this->sock);
     freeaddrinfo(this->dest);
 
-    printf("\nSuccesfully sended file: %s\n", basename(this->file_name));
+    printf("\nSuccesfully sended file: %s\n\n", basename(this->file_name));
     return 0;
 }
 
 int icmp_client::send_pkt(char *data, int datalen, int pck_type) {
-    static int sequence = 0;
 
     struct secret_proto protocol;
     protocol.datalen = datalen;
     protocol.type = pck_type;
     protocol.client_id = this->client_id;
-    protocol.seq = sequence++;
+    protocol.seq = this->sequence++;
 
     int encrypted_data_len = 0;
     char *encrypted_data = NULL;

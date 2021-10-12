@@ -10,9 +10,12 @@
 
 #include "icmp_client.h"
 #include "icmp_server.h"
+#include <filesystem>
 #include <getopt.h>
+#include <iostream>
 #include <signal.h>
 #include <stdio.h>
+#include <string>
 
 using namespace std;
 
