@@ -102,7 +102,7 @@ void print_help() {
     printf("    -l                         - Start server and listen for ICMP packet and save files to current folder\n");
     printf("    -h                         - Print help message\n");
     printf("\nNOTE: -l option can be used without -r and -s options.\n");
-    printf("\nNOTE: this program requires root privileges to work correctly\n");
-    printf("\nAuthor: Peter Zdravecký\n");
+    printf("NOTE: to set another interface for listening, set it as your system default interface\n");
+    printf("NOTE: this program requires root privileges to work correctly\n");
     printf("------------------------\n");
 }

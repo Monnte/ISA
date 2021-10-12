@@ -5,7 +5,7 @@ icmp_server::icmp_server() {}
 icmp_server::~icmp_server() {}
 
 int icmp_server::init() {
-    char *interface;
+    char *interface = NULL;
     char error_message[PCAP_ERRBUF_SIZE];
     struct bpf_program fp;
     bpf_u_int32 netp;
@@ -13,20 +13,39 @@ int icmp_server::init() {
     int datalink_type;
 
     pcap_if_t *interfaces;
+    pcap_if_t *inter;
 
     if (pcap_findalldevs(&interfaces, error_message) == -1) {
         fprintf(stderr, "Error: %s\n", error_message);
         return 1;
     }
-    interface = interfaces->name;
 
-    if (pcap_lookupnet((interface), &(netp), &(maskp), error_message) == -1) {
-        fprintf(stderr, "Error: %s\n", error_message);
+    for (inter = interfaces; inter != NULL; inter = inter->next) {
+        interface = inter->name;
+
+        this->device = pcap_open_live(interface, BUFSIZ * 10, 0, 1, error_message);
+        if (this->device == NULL) {
+            fprintf(stderr, "Error: %s\n", error_message);
+            continue;
+        }
+        datalink_type = pcap_datalink(this->device);
+        if (datalink_type < 0) {
+            fprintf(stderr, "Error: %s\n", pcap_geterr(this->device));
+            continue;
+        }
+        if (datalink_type != DLT_EN10MB) {
+            continue;
+        }
+
+        break;
+    }
+
+    if (inter == NULL) {
+        fprintf(stderr, "Error: opening device for listen\n");
         return 1;
     }
 
-    this->device = pcap_open_live(interface, BUFSIZ * 10, 0, 1, error_message);
-    if (this->device == NULL) {
+    if (pcap_lookupnet((interface), &(netp), &(maskp), error_message) == -1) {
         fprintf(stderr, "Error: %s\n", error_message);
         return 1;
     }
@@ -43,15 +62,18 @@ int icmp_server::init() {
         return 1;
     }
 
-    datalink_type = pcap_datalink(this->device);
-    if (datalink_type < 0) {
+    /* Capture only incoming packets, to prevent server capturing packets sended by client on same device */
+    int direction = pcap_setdirection(this->device, PCAP_D_IN);
+    if (direction == -1) {
         fprintf(stderr, "Error: %s\n", pcap_geterr(this->device));
         return 1;
     }
 
+    printf("-----------------------------\n");
+    printf("Choosen interface for listen: %s\n", interface);
+
     pcap_freealldevs(interfaces);
     pcap_freecode(&(fp));
-
     return 0;
 }
 
@@ -104,7 +126,7 @@ void icmp_server::handle_data(char *pkt_data, int caplen, int ip_version) {
     struct icmp *icmp = (struct icmp *)(pkt_data + ETH_HLEN + ip_len);
     struct secret_proto *proto = (struct secret_proto *)(pkt_data + ETH_HLEN + ip_len + icmp_len);
 
-    /* Check if icmp type is request type */
+    /* Filter icmp type is request type */
     if (icmp->icmp_type != (ip_version == 4 ? ICMP_ECHO : ICMP6_ECHO_REQUEST)) {
         return;
     }
