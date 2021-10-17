@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
         if (filesystem::is_directory(file_name)) {
             for (const auto &file : filesystem::recursive_directory_iterator(file_name))
                 if (!filesystem::is_directory(file.path()))
-                    client.send_file((char *)(file.path().c_str()), dst_adress);
+                    result += client.send_file((char *)(file.path().c_str()), dst_adress);
         } else {
             result = client.send_file(file_name, dst_adress);
         }

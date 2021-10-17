@@ -29,6 +29,7 @@ struct secret_proto {
 
 /**
  * @brief Encrpyt data with AES encryption
+ * @see https://man.openbsd.org/AES_encrypt.3
  *
  * @param in data to be encrypted
  * @param in_length length of in data
@@ -39,6 +40,7 @@ char *encrypt_text(char *in, int in_length, int *out_length);
 
 /**
  * @brief Decrypt data with AES decryption
+ * @see https://man.openbsd.org/AES_encrypt.3
  *
  * @param in data to be encrypted
  * @param in_length length of in data

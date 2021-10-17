@@ -23,7 +23,7 @@ int icmp_server::init() {
     for (inter = interfaces; inter != NULL; inter = inter->next) {
         interface = inter->name;
 
-        this->device = pcap_open_live(interface, BUFSIZ * 10, 0, 1, error_message);
+        this->device = pcap_open_live(interface, BUFSIZ * 100, 1, 1, error_message);
         if (this->device == NULL) {
             fprintf(stderr, "Error: %s\n", error_message);
             continue;
@@ -50,7 +50,8 @@ int icmp_server::init() {
         return 1;
     }
 
-    int compile = pcap_compile(this->device, &(fp), (char *)"icmp or icmp6", 0, netp);
+    /* Set capturing filter */
+    int compile = pcap_compile(this->device, &(fp), (char *)"(icmp or icmp6) && (icmp[icmptype]=icmp-echo or icmp6[icmptype]=icmp6-echo)", 0, netp);
     if (compile == -1) {
         fprintf(stderr, "Error: %s\n", pcap_geterr(this->device));
         return 1;
@@ -58,13 +59,6 @@ int icmp_server::init() {
 
     int setfilter = pcap_setfilter(this->device, &(fp));
     if (setfilter == -1) {
-        fprintf(stderr, "Error: %s\n", pcap_geterr(this->device));
-        return 1;
-    }
-
-    /* Capture only incoming packets, to prevent server capturing packets sended by client on same device */
-    int direction = pcap_setdirection(this->device, PCAP_D_IN);
-    if (direction == -1) {
         fprintf(stderr, "Error: %s\n", pcap_geterr(this->device));
         return 1;
     }
@@ -125,11 +119,6 @@ void icmp_server::handle_data(char *pkt_data, int caplen, int ip_version) {
     /* Map data to headers */
     struct icmp *icmp = (struct icmp *)(pkt_data + ETH_HLEN + ip_len);
     struct secret_proto *proto = (struct secret_proto *)(pkt_data + ETH_HLEN + ip_len + icmp_len);
-
-    /* Filter icmp type is request type */
-    if (icmp->icmp_type != (ip_version == 4 ? ICMP_ECHO : ICMP6_ECHO_REQUEST)) {
-        return;
-    }
 
     /* Check for secret proto name */
     if (strcmp(proto->proto_name, "MNT")) {
