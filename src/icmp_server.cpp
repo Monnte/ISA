@@ -51,7 +51,7 @@ int icmp_server::init() {
     }
 
     /* Set capturing filter */
-    int compile = pcap_compile(this->device, &(fp), (char *)"(icmp or icmp6) && (icmp[icmptype]=icmp-echo or icmp6[icmptype]=icmp6-echo)", 0, netp);
+    int compile = pcap_compile(this->device, &(fp), (char *)"(icmp && icmp[icmptype]=icmp-echo) || (icmp6 && icmp6[icmptype]=icmp6-echo)", 0, netp);
     if (compile == -1) {
         fprintf(stderr, "Error: %s\n", pcap_geterr(this->device));
         return 1;
@@ -191,7 +191,7 @@ int icmp_server::file_write(int ID, char *data, int datalen, int seq) {
     this->connections[ID]->data.insert(this->connections[ID]->data.end(), data, data + datalen);
 
     int vec_data_len = this->connections[ID]->data.size();
-    if (vec_data_len > 1000000) /* Write acuumulated data over 1MB */
+    if (vec_data_len > 5000000) /* Write acuumulated data over 5MB */
     {
         this->connections[ID]->file_ptr->write(this->connections[ID]->data.data(), vec_data_len);
         this->connections[ID]->data.clear();

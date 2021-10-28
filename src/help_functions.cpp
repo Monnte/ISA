@@ -12,7 +12,7 @@
 char *encrypt_text(char *in, int in_length, int *out_length) {
 
     AES_KEY key;
-    AES_set_encrypt_key(SECRET_KEY, 128, &key);
+    AES_set_encrypt_key(SECRET_KEY, 256, &key);
 
     int blocks = (in_length % AES_BLOCK_SIZE ? 1 : 0) + (in_length / AES_BLOCK_SIZE);
     *out_length = blocks * AES_BLOCK_SIZE;
@@ -45,7 +45,7 @@ char *encrypt_text(char *in, int in_length, int *out_length) {
 char *decrypt_text(char *in, int in_length, int *out_length) {
 
     AES_KEY key;
-    AES_set_decrypt_key(SECRET_KEY, 128, &key);
+    AES_set_decrypt_key(SECRET_KEY, 256, &key);
 
     int blocks = (in_length % AES_BLOCK_SIZE ? 1 : 0) + (in_length / AES_BLOCK_SIZE);
     *out_length = blocks * AES_BLOCK_SIZE;
