@@ -20,6 +20,7 @@
 #include <netinet/ip6.h>
 #include <netinet/ip_icmp.h>
 #include <pcap/pcap.h>
+#include <poll.h>
 #include <stdio.h>
 #include <string.h>
 #include <string>
@@ -28,6 +29,9 @@
 #include <unistd.h>
 
 using namespace std;
+
+#define MAX_DATA_LENGTH 1250 /* Bytes */
+#define POLL_TIEMOUT 3000    /* ms */
 
 class icmp_client {
   public:
@@ -110,6 +114,7 @@ class icmp_client {
     char *dst_host; /* ip adress / hostname of destination */
     ifstream file;
     int sock;
+    struct pollfd fds[1]; /* Wait for some event on a file descriptor */
     int client_id;
     struct addrinfo *dest;
     int sequence; /* sequence number of sended packet - reset when sending new file */

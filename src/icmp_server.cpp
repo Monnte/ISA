@@ -106,7 +106,7 @@ void handle_packet(u_char *user, const struct pcap_pkthdr *pkt_header, const u_c
 
 void icmp_server::handle_data(char *pkt_data, int caplen, int ip_version) {
     int ip_len = ip_version == 4 ? sizeof(struct ip) : sizeof(struct ip6_hdr);
-    int icmp_len = sizeof(struct icmp);
+    int icmp_len = sizeof(struct icmphdr);
     int proto_len = sizeof(struct secret_proto);
 
     int headers_length = ETH_HLEN + ip_len + icmp_len + proto_len;
@@ -117,7 +117,7 @@ void icmp_server::handle_data(char *pkt_data, int caplen, int ip_version) {
         return;
 
     /* Map data to headers */
-    struct icmp *icmp = (struct icmp *)(pkt_data + ETH_HLEN + ip_len);
+    struct icmphdr *icmp = (struct icmphdr *)(pkt_data + ETH_HLEN + ip_len);
     struct secret_proto *proto = (struct secret_proto *)(pkt_data + ETH_HLEN + ip_len + icmp_len);
 
     /* Check for secret proto name */
