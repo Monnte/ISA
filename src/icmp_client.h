@@ -9,7 +9,8 @@
  */
 #pragma once
 
-#include "help_functions.h"
+#include "cipher.h"
+#include "secret_proto.h"
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <fstream>

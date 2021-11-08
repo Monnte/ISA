@@ -1,5 +1,5 @@
 /**
- * @file help_functions.cpp
+ * @file cipher.cpp
  * @author Peter Zdravecký (xzdrav00)
  * @version 0.1
  * @date 2021-10-10
@@ -7,7 +7,7 @@
  * @copyright Copyright (c) 2021
  *
  */
-#include "help_functions.h"
+#include "cipher.h"
 
 char *encrypt_text(char *in, int in_length, int *out_length) {
 

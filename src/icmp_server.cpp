@@ -64,7 +64,7 @@ int icmp_server::init() {
     }
 
     printf("-----------------------------\n");
-    printf("Choosen interface for listen: %s\n", interface);
+    printf("Chosen interface for listen: %s\n", interface);
 
     pcap_freealldevs(interfaces);
     pcap_freecode(&(fp));
