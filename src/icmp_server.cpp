@@ -97,18 +97,20 @@ void icmp_server::handle_data(char *pkt_data, int caplen, int ip_version) {
     int outlength;
     char *decrypted_data = decrypt_text(data, datalen, &outlength);
 
+    char filename[256] = {0};
     /* Choose action based on packet type */
     switch (proto->type) {
     case pkt_type::HEAD:
-        this->new_file(decrypted_data, proto->client_id);
+        memcpy(filename, decrypted_data, outlength);
+        this->new_file(filename, proto->client_id);
         break;
     case pkt_type::DATA:
         this->file_write(proto->client_id, decrypted_data, proto->datalen, proto->seq);
         break;
     case pkt_type::END:
-        this->file_transferd(decrypted_data, proto->client_id);
+        memcpy(filename, decrypted_data, outlength);
+        this->file_transferd(filename, proto->client_id);
         break;
-
     default:
         return;
         break;
