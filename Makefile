@@ -1,7 +1,7 @@
 OBJS=obj/main.o obj/cipher.o obj/icmp_client.o obj/icmp_server.o
 HEADERS=src/main.h src/cipher.h src/icmp_client.h src/icmp_server.h src/secret_proto.h
 CC=g++
-CFLAGS= -std=c++17 -Wall -Wextra -pedantic -lpcap -Wno-unused-variable -Wno-unused-parameter -lcrypto -lssl
+CFLAGS= -std=c++17 -Wall -Wextra -pedantic -lpcap  -lcrypto -lssl
 BINARY=secret
 
 obj/%.o: src/%.cpp $(HEADERS)

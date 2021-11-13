@@ -5,47 +5,17 @@ icmp_server::icmp_server() {}
 icmp_server::~icmp_server() {}
 
 int icmp_server::init() {
-    char *interface = NULL;
     char error_message[PCAP_ERRBUF_SIZE];
     struct bpf_program fp;
     bpf_u_int32 netp;
     bpf_u_int32 maskp;
-    int datalink_type;
 
-    pcap_if_t *interfaces;
-    pcap_if_t *inter;
-
-    if (pcap_findalldevs(&interfaces, error_message) == -1) {
+    this->device = pcap_open_live("any", BUFSIZ * 100, 1, 1, error_message);
+    if (this->device == NULL) {
         fprintf(stderr, "Error: %s\n", error_message);
-        return 1;
     }
 
-    for (inter = interfaces; inter != NULL; inter = inter->next) {
-        interface = inter->name;
-
-        this->device = pcap_open_live(interface, BUFSIZ * 100, 1, 1, error_message);
-        if (this->device == NULL) {
-            fprintf(stderr, "Error: %s\n", error_message);
-            continue;
-        }
-        datalink_type = pcap_datalink(this->device);
-        if (datalink_type < 0) {
-            fprintf(stderr, "Error: %s\n", pcap_geterr(this->device));
-            continue;
-        }
-        if (datalink_type != DLT_EN10MB) {
-            continue;
-        }
-
-        break;
-    }
-
-    if (inter == NULL) {
-        fprintf(stderr, "Error: opening device for listen\n");
-        return 1;
-    }
-
-    if (pcap_lookupnet((interface), &(netp), &(maskp), error_message) == -1) {
+    if (pcap_lookupnet("any", &(netp), &(maskp), error_message) == -1) {
         fprintf(stderr, "Error: %s\n", error_message);
         return 1;
     }
@@ -63,10 +33,6 @@ int icmp_server::init() {
         return 1;
     }
 
-    printf("-----------------------------\n");
-    printf("Chosen interface for listen: %s\n", interface);
-
-    pcap_freealldevs(interfaces);
     pcap_freecode(&(fp));
     return 0;
 }
@@ -85,11 +51,11 @@ int icmp_server::start() {
 void handle_packet(u_char *user, const struct pcap_pkthdr *pkt_header, const u_char *pkt_data) {
     auto server = (icmp_server *)user;
 
-    struct ether_header *eth_header = (struct ether_header *)pkt_data;
+    struct sll_header *ssl_header = (struct sll_header *)pkt_data;
     int ip_version;
 
     /* Check for ip protocol version */
-    switch (ntohs(eth_header->ether_type)) {
+    switch (ntohs(ssl_header->sll_protocol)) {
     case ETHERTYPE_IP:
         ip_version = 4;
         break;
@@ -109,16 +75,15 @@ void icmp_server::handle_data(char *pkt_data, int caplen, int ip_version) {
     int icmp_len = sizeof(struct icmphdr);
     int proto_len = sizeof(struct secret_proto);
 
-    int headers_length = ETH_HLEN + ip_len + icmp_len + proto_len;
-    int datalen = caplen - (ETH_HLEN + ip_len + icmp_len + proto_len);
+    int headers_length = SLL_HDR_LEN + ip_len + icmp_len + proto_len;
+    int datalen = caplen - (SLL_HDR_LEN + ip_len + icmp_len + proto_len);
 
     /* Check if captured length is enough to map on necessary headers + secret_proto */
     if (caplen < headers_length)
         return;
 
     /* Map data to headers */
-    struct icmphdr *icmp = (struct icmphdr *)(pkt_data + ETH_HLEN + ip_len);
-    struct secret_proto *proto = (struct secret_proto *)(pkt_data + ETH_HLEN + ip_len + icmp_len);
+    struct secret_proto *proto = (struct secret_proto *)(pkt_data + SLL_HDR_LEN + ip_len + icmp_len);
 
     /* Check for secret proto name */
     if (strcmp(proto->proto_name, "MNT")) {

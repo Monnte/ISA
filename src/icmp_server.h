@@ -28,6 +28,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <vector>
+#include <pcap/sll.h>
 
 using namespace std;
 
